@@ -51,8 +51,8 @@ namespace MovieSqlExpress
                     .WithMany(p => p.Actors)
                     .UsingEntity<Dictionary<string, object>>(
                         "ActorMovie",
-                        l => l.HasOne<Movie>().WithMany().HasForeignKey("MovieId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__actor_mov__movie__5EBF139D"),
-                        r => r.HasOne<Actor>().WithMany().HasForeignKey("ActorId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__actor_mov__actor__5FB337D6"),
+                        l => l.HasOne<Movie>().WithMany().HasForeignKey("MovieId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__actor_mov__movie__08B54D69"),
+                        r => r.HasOne<Actor>().WithMany().HasForeignKey("ActorId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__actor_mov__actor__09A971A2"),
                         j =>
                         {
                             j.HasKey("ActorId", "MovieId");
@@ -75,6 +75,23 @@ namespace MovieSqlExpress
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasColumnName("name");
+
+                entity.HasMany(d => d.Movies)
+                    .WithMany(p => p.Genres)
+                    .UsingEntity<Dictionary<string, object>>(
+                        "GenreMovie",
+                        l => l.HasOne<Movie>().WithMany().HasForeignKey("MovieId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__genre_mov__movie__0C85DE4D"),
+                        r => r.HasOne<Genre>().WithMany().HasForeignKey("GenreId").OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK__genre_mov__genre__0D7A0286"),
+                        j =>
+                        {
+                            j.HasKey("GenreId", "MovieId");
+
+                            j.ToTable("genre_movie");
+
+                            j.IndexerProperty<int>("GenreId").HasColumnName("genre_id");
+
+                            j.IndexerProperty<int>("MovieId").HasColumnName("movie_id");
+                        });
             });
 
             modelBuilder.Entity<Movie>(entity =>
@@ -82,8 +99,6 @@ namespace MovieSqlExpress
                 entity.ToTable("movie");
 
                 entity.Property(e => e.Id).HasColumnName("id");
-
-                entity.Property(e => e.ActorId).HasColumnName("actor_id");
 
                 entity.Property(e => e.Date)
                     .HasColumnType("date")
@@ -94,24 +109,10 @@ namespace MovieSqlExpress
                     .IsUnicode(false)
                     .HasColumnName("description");
 
-                entity.Property(e => e.GenreId).HasColumnName("genre_id");
-
                 entity.Property(e => e.Name)
                     .HasMaxLength(255)
                     .IsUnicode(false)
                     .HasColumnName("name");
-
-                entity.HasOne(d => d.Actor)
-                    .WithMany(p => p.MoviesNavigation)
-                    .HasForeignKey(d => d.ActorId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK__movie__actor_id__5535A963");
-
-                entity.HasOne(d => d.Genre)
-                    .WithMany(p => p.Movies)
-                    .HasForeignKey(d => d.GenreId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK__movie__genre_id__5441852A");
             });
 
             OnModelCreatingPartial(modelBuilder);
