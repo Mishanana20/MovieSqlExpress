@@ -1,10 +1,5 @@
-﻿///поиск по базе фильмов с учетом нескольких критериев EF
-///далее разбить на методы и использовать вместе с react
-
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -16,135 +11,79 @@ namespace MovieSqlExpress
         {
             using (movie_dbContext db = new movie_dbContext())
             {
+                db.Database.EnsureDeleted();
+                db.Database.EnsureCreated();
+            }
+            using (movie_dbContext db = new movie_dbContext())
+            {
                 bool isAvalaible = db.Database.CanConnect();
                 if (!isAvalaible)
                 {
                     Console.WriteLine("база данных недоступна");
-                    return;
                 }
                 else Console.WriteLine("база данных доступна");
+
+                Actor misha = new Actor { FirstName = "Миша", SecondName = "Носик" };
+                db.Add(misha);
+                Actor polina = new Actor { FirstName = "Полина", SecondName = "Полухина" };
+                db.AddRange(misha, polina);
+                db.SaveChanges();
+                var actors = db.Actors.ToList();
+
+                Console.WriteLine("Список актеров:");
+                foreach (Actor a in actors)
+                {
+                    Console.WriteLine($" - {a.Id}: {a.FirstName} {a.SecondName}");
+
+
+                }
+            
+                Genre thriller = new Genre { Name = "Thriller" };
+                Genre psychological_thriller = new Genre {Name = "Psychological thriller" };
+                Genre fantasy= new Genre { Name = "Fantasy" };
+                Genre mecha = new Genre { Name = "Mecha" };
+                db.AddRange(fantasy, thriller, psychological_thriller);
+               
+                Movie EVA = new Movie { Name = "Evangelion", Description = "New Genesis Evangelion", Date = DateTime.Now.Date };
+                Movie FGO = new Movie { Name = "Fate: Grand Order", Description = "Альтернативная история из линейки Фейт", Date = DateTime.Now.Date };
+                Movie FZ = new Movie { Name = "Fate: Zero", Description = "Приквел истории фейт. Рассказывается сюжет 7 войн за грааль", Date = DateTime.Now.Date };
+                db.AddRange(FZ,EVA,FGO);
+                db.SaveChanges();
+
+                EVA.Genres.Add(mecha);
+                EVA.Genres.Add(psychological_thriller);
+                EVA.Actors.Add(misha);
+                db.SaveChanges();
+
+                var genres = db.Genres.ToList();
+                Console.WriteLine("Список жанров:");
+                foreach (Genre a in genres)
+                {
+                    Console.WriteLine($" - {a.Id}: {a.Name}");
+                }
+
+
+                var movies = db.Movies.ToList();
+                Console.WriteLine("Список фильмов:");
+                foreach (Movie a in movies)
+                {
+                    Console.WriteLine($" - {a.Id}: {a.Name}, {a.Description}, {a.Date} ");
+                }
+                Console.WriteLine("-------------------\n");
             }
             using (movie_dbContext db = new movie_dbContext())
             {
-                while (true)
+                var movies = db.Movies.Include(c => c.Actors).Include(c=> c.Genres).ToList();
+                // выводим все курсы
+                foreach (var c in movies)
                 {
-                    /*
-                     * как сделать?
-                     * сначала делаю выборку по названию фильма
-                     * получается объект с актерами(много), названием фильма (1) и жанрами (много)
-                     * ---------
-                     * Если есть хоть один актер/жанр из множеств актеры и жанры, то добавялем в финальную выборку.
-                     * или наоборот, если нет хотя бы одного, то удаляем, а если есть, то брейк и дальше проверяем
-                     */
-                    Console.Write("Введите название фильма: ");
-                    string? filmName = Console.ReadLine();
-                    var something = (db.Movies.AsNoTracking()
-                    .Include(a => a.Genres)
-                    .Include(a => a.Actors).Where(a => EF.Functions.Like(a.Name, $"%{filmName}%"))).ToList();
-                    if (something.Any())  //if (something != null)
-                    {
-                        Console.WriteLine("Выборка что-то имеет");
-                        foreach (var q in something)
-                        {
-                            Console.WriteLine($"*** {q.Name}");
-                            foreach (var a in q.Genres)
-                            {
-                                Console.WriteLine($"{a.Name}");
-                            }
-                            foreach (var a in q.Actors)
-                            {
-                                Console.WriteLine($"{a.FirstName} {a.SecondName}");
-                            }
-                        }
-                    }
-                    else Console.WriteLine("выборка пуста");
-
-                    Console.Write("Введите Имя актера: ");
-                    string? actorName = Console.ReadLine();
-                    var somethingActors = db.Actors.AsNoTracking()
-                                          .Include(a => a.Movies)
-                                          .Where(a => EF.Functions.Like(a.FirstName, $"%{actorName}%"));
-                    if (somethingActors.Any())  //if (something != null)
-                    {
-                        Console.WriteLine("Выборка имеет актеров");
-                        foreach (var q in somethingActors)
-                        {
-                            Console.WriteLine($"*** {q.FirstName} {q.SecondName}");
-                            foreach (var a in q.Movies)
-                            {
-                                Console.WriteLine($"{a.Name}");
-                            }
-                            
-                        }
-                    }
-                    else Console.WriteLine("выборка пуста");
-
-                    Console.Write("Введите жанр фильма: ");
-                    string? genreName = Console.ReadLine();
-                    var somethingGenre = db.Genres.AsNoTracking()
-                                          .Include(a => a.Movies)
-                                          .Where(a => EF.Functions.Like(a.Name, $"%{genreName}%"));
-                    if (somethingActors.Any())  //if (something != null)
-                    {
-                        Console.WriteLine("Выборка имеет эти жанры");
-                        foreach (var q in somethingGenre)
-                        {
-                            Console.WriteLine($"*** {q.Name}");
-                            foreach (var a in q.Movies)
-                            {
-                                Console.WriteLine($"{a.Name}");
-                            }
-
-                        }
-                    }
-                    else Console.WriteLine("выорка пуста");
-
-                    List<Movie> movies = new List<Movie>();
-                    foreach (var movie in something)
-                    {
-                        bool isHasActor = false, isHasGenre=false;
-                        foreach (var actor in movie.Actors)
-                        {
-                            if (actor.FirstName.ToLower().Contains(actorName.ToLower()))
-                            {
-                                isHasActor = true;
-                            }
-                        }
-                        foreach (var genre in movie.Genres)
-                        {
-                            if (genre.Name.ToLower().Contains(genreName.ToLower()))
-                            {
-                                isHasGenre = true;
-                            }
-                        }
-                        if (isHasGenre == true && isHasActor == true)
-                        {
-                            movies.Add(movie);
-                        }
-                    }
-                    //если фильмы имеют Any(от фильмов актеров), то добавить
-                    movies.Distinct();
-                    if (movies.Any())  //if (something != null)
-                    {
-                        Console.WriteLine(@"/\/\/\/\/\/\/\/\/\/\/\/\/\/\");
-
-                       Console.WriteLine("Результаты поиска:");
-                        foreach (var m in movies)
-                        {
-                            Console.WriteLine($"*** {m.Name}");
-                            Console.WriteLine("Актеры:");
-                            foreach (var a in m.Actors)
-                            {
-                                Console.WriteLine($"{a.FirstName} {a.SecondName}");
-                            }
-                            Console.WriteLine("Жанры:");
-                            foreach (var a in m.Genres)
-                            {
-                                Console.WriteLine($"{a.Name}");
-                            }
-                        }
-                    }
-                    else { Console.WriteLine("По данному запросу ничего не найдено"); }
+                    Console.WriteLine($"Название фильма: {c.Name}");
+                    // выводим всех студентов для данного кура
+                    foreach (Actor s in c.Actors)
+                        Console.WriteLine($"Имя актеров: {s.FirstName} {s.SecondName} ");
+                    foreach (Genre s in c.Genres)
+                        Console.WriteLine($"Жанры: {s.Name} ");
+                    Console.WriteLine("-------------------");
                 }
             }
         }
